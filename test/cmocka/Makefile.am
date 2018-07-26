@@ -40,6 +40,11 @@ check_PROGRAMS += alloc
 alloc_SOURCES = src/lib/alloc/alloc.c src/lib/alloc/mock.c ../../src/lib/alloc.c ../../src/platform/apollolake/memory.c
 endif
 
+#pipeline tests
+
+check_PROGRAMS += pipeline_new
+pipeline_new_SOURCES = ../../src/audio/pipeline.c  src/audio/pipeline/pipeline_new.c src/audio/pipeline/pipeline_mocks.c 
+
 # volume tests
 
 check_PROGRAMS += volume_process

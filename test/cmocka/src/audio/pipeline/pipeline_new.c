@@ -28,26 +28,56 @@
  * Author: Jakub Dabek <jakub.dabek@linux.intel.com>
  */
 
+#include <sof/audio/pipeline.h>
+#include <sof/audio/component.h>
+#include <sof/alloc.h>
+#include <stdarg.h>
+#include <setjmp.h> 
 #include <cmocka.h>
-#include <stddef.h>
-#include "pipeline_mocks.c"
+
 
 static void test_pipeline_new(void **state)
 {
+	(void)state;
 	/*Initialize structs for arguments*/
-	struct sof_ipc_pipe_new *pipe_desc;
-	struct comp_dev *cd;
+	struct sof_ipc_pipe_new pipe_desc = {.core = 1, .priority = 2};
+	struct comp_dev *cd = malloc(sizeof(cd));
+	//pipe_desc->core = 4;
+	//pipe_desc->priority = 6;
+	//struct pipeline *result;
 
 	/*Memmory allocation values check. Pipeline can have those changed
 	 *in future so expect errors here if any change to pipeline memmory
 	 *capabilities or memmory space was made
 	 */
-	expect_value(__wrap_rzalloc, zone, RZONE_RUNTIME);
-	expect_value(__wrap_rzalloc, caps, SOF_MEM_CAPS_RAM);
-	expect_value(__wrap_rzalloc, bytes, sizeof(struct pipeline));
+	expect_value(rzalloc, zone, RZONE_RUNTIME);
+	expect_value(rzalloc, caps, SOF_MEM_CAPS_RAM);
+	expect_value(rzalloc, bytes, sizeof(struct pipeline));
+
+	expect_value(schedule_task_config, priority, 2);
+	//expect_value(schedule_task_config, core, 1);
+
+	/*Check if all parameters are passed to sheduler 
+	 *(initialization and configuration)
+	 */
+
+
+	//expect_memory(__wrap_schedule_task_init, task, &result->pipe_task, sizeof(result->pipe_task));
+	//expect_value(__wrap_schedule_task_init, task, &result->pipe_task);
+	//jak sprawdziæ wskaŸnik na funkcje
+	//expect_memory(__wrap_schedule_task_init, data, result, sizeof(result));
+	//expect_value(__wrap_schedule_task_init, data, result);
+	//expect_memory(__wrap_schedule_task_config, task, &result->pipe_task, sizeof(result->pipe_task));
+	//expect_value(__wrap_schedule_task_config, task, &result->pipe_task);
+	//expect_value(__wrap_schedule_task_config, priority, 2);
+	//expect_value(__wrap_schedule_task_config, core, 1);
+
+	/*Check list initialization*/
+	//assert_ptr_equal(&result->comp_list, result->comp_list.next);
+	//assert_ptr_equal(&result->buffer_list, result->buffer_list.next);
 
 	/*Testing component*/
-	struct pipeline *result = pipeline_new(pipe_desc, cd);
+	struct pipeline *result = pipeline_new(&pipe_desc, cd);
 
 	/*Pipeline should have been created so pointer can't be null*/
 	assert_non_null(result);
@@ -61,8 +91,10 @@ static void test_pipeline_new(void **state)
 int main(void)
 {
 	const struct CMUnitTest tests[] = {
-		cmocka_unit_test(test_pipeline_new)
+		cmocka_unit_test(test_pipeline_new),
 	};
+
+	cmocka_set_message_output(CM_OUTPUT_TAP);
 
 	return cmocka_run_group_tests(tests, NULL, NULL);
 }

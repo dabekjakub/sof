@@ -28,43 +28,96 @@
  * Author: Jakub Dabek <jakub.dabek@linux.intel.com>
  */
 
-#include <cmocka.h>
-#include <stddef.h>
-#include <sof/alloc.h>
 #include <sof/audio/pipeline.h>
 #include <sof/audio/component.h>
+#include <sof/alloc.h>
+#include <sof/schedule.h>
+#include <stdarg.h>
+#include <setjmp.h> 
+#include <cmocka.h>
+#include "pipeline_mocks.h"
 
-void __wrap_trace_pipe(char *log)
-{
-	(void)log;
-}
 
-void __wrap_trace_pipe_error(char *log)
-{
-	(void)log;
-}
-
-void *__wrap_rzalloc(int zone, int caps, size_t bytes)
+void *rzalloc(int zone, uint32_t caps, size_t bytes)
 {
 	check_expected(zone);
 	check_expected(caps);
 	check_expected(bytes);
 	(void)zone;
 	(void)caps;
-	return malloc(bytes);
+	return calloc(bytes, 1);
 }
 
-void __wrap_schedule_task_init(struct task *task, void(*func)(void *),
+void platform_dai_timestamp(struct comp_dev *dai, struct sof_ipc_stream_posn *posn)
+{
+	(void)dai;
+	(void)posn;
+}
+
+void schedule_task(struct task *task, uint64_t start, uint64_t deadline)
+{
+	(void)deadline;
+	(void)start;
+	(void)task;
+}
+
+void schedule_task_complete(struct task *task)
+{
+	(void)task;
+}
+
+void schedule_task_idle(struct task *task, uint64_t deadline)
+{
+	(void)deadline;
+	(void)task;
+}
+
+void rfree(void *ptr)
+{
+	(void)ptr;
+}
+
+void platform_host_timestamp(struct comp_dev *host, struct sof_ipc_stream_posn *posn)
+{
+	(void)host;
+	(void)posn;
+}
+
+int ipc_stream_send_xrun(struct comp_dev *cdev,	struct sof_ipc_stream_posn *posn)
+{
+	return 0;
+}
+
+void _trace_event(uint32_t event)
+{
+	(void)event;
+}
+
+void _trace_event_mbox_atomic(uint32_t event)
+{
+	(void)event;
+}
+
+void schedule_task_init(struct task *task, void(*func)(void *),
 	void *data)
 {
+	//check_expected_ptr(task);
+	//check_expected_ptr(data);
 	(void)task;
 	(void)func;
 	(void)data;
 }
 
-void __wrap_schedule_task_config(struct task *task, uint16_t priority,
+void schedule_task_free(struct task *task)
+{
+	(void)task;
+}
+void schedule_task_config(struct task *task, uint16_t priority,
 	uint16_t core)
 {
+	check_expected(priority);
+	//check_expected(core);
+
 	(void)task;
 	(void)priority;
 	(void)core;

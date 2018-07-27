@@ -28,10 +28,11 @@
  * Author: Jakub Dabek <jakub.dabek@linux.intel.com>
  */
 
-#include <sof/audio/pipeline.h>
+#include <stdint.h>
 #include <sof/audio/component.h>
-#include <sof/alloc.h>
+#include <sof/audio/pipeline.h>
 #include <stdarg.h>
+#include <stddef.h>
 #include <setjmp.h> 
 #include <cmocka.h>
 
@@ -42,9 +43,7 @@ static void test_pipeline_new(void **state)
 	/*Initialize structs for arguments*/
 	struct sof_ipc_pipe_new pipe_desc = {.core = 1, .priority = 2};
 	struct comp_dev *cd = malloc(sizeof(cd));
-	//pipe_desc->core = 4;
-	//pipe_desc->priority = 6;
-	//struct pipeline *result;
+	struct pipeline *result;
 
 	/*Memmory allocation values check. Pipeline can have those changed
 	 *in future so expect errors here if any change to pipeline memmory
@@ -54,30 +53,20 @@ static void test_pipeline_new(void **state)
 	expect_value(rzalloc, caps, SOF_MEM_CAPS_RAM);
 	expect_value(rzalloc, bytes, sizeof(struct pipeline));
 
-	expect_value(schedule_task_config, priority, 2);
-	//expect_value(schedule_task_config, core, 1);
-
 	/*Check if all parameters are passed to sheduler 
 	 *(initialization and configuration)
 	 */
-
-
-	//expect_memory(__wrap_schedule_task_init, task, &result->pipe_task, sizeof(result->pipe_task));
-	//expect_value(__wrap_schedule_task_init, task, &result->pipe_task);
-	//jak sprawdziæ wskaŸnik na funkcje
-	//expect_memory(__wrap_schedule_task_init, data, result, sizeof(result));
-	//expect_value(__wrap_schedule_task_init, data, result);
-	//expect_memory(__wrap_schedule_task_config, task, &result->pipe_task, sizeof(result->pipe_task));
-	//expect_value(__wrap_schedule_task_config, task, &result->pipe_task);
-	//expect_value(__wrap_schedule_task_config, priority, 2);
-	//expect_value(__wrap_schedule_task_config, core, 1);
-
-	/*Check list initialization*/
-	//assert_ptr_equal(&result->comp_list, result->comp_list.next);
-	//assert_ptr_equal(&result->buffer_list, result->buffer_list.next);
+	expect_function_call(schedule_task_init);
+	expect_function_call(schedule_task_config);
+	expect_value(schedule_task_config, priority, pipe_desc.priority);
+	expect_value(schedule_task_config, core, pipe_desc.core);
 
 	/*Testing component*/
-	struct pipeline *result = pipeline_new(&pipe_desc, cd);
+	result = pipeline_new(&pipe_desc, cd);
+
+	/*Check list initialization*/
+	assert_ptr_equal(&result->comp_list, result->comp_list.next);
+	assert_ptr_equal(&result->buffer_list, result->buffer_list.next);
 
 	/*Pipeline should have been created so pointer can't be null*/
 	assert_non_null(result);

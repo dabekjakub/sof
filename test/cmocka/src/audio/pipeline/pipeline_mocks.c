@@ -28,15 +28,16 @@
  * Author: Jakub Dabek <jakub.dabek@linux.intel.com>
  */
 
-#include <sof/audio/pipeline.h>
 #include <sof/audio/component.h>
-#include <sof/alloc.h>
-#include <sof/schedule.h>
+#include <sof/audio/pipeline.h>
 #include <stdarg.h>
+#include <stddef.h>
 #include <setjmp.h> 
+#include <stdint.h>
 #include <cmocka.h>
-#include "pipeline_mocks.h"
 
+int ipc_stream_send_xrun(struct comp_dev *cdev,
+	struct sof_ipc_stream_posn *posn);
 
 void *rzalloc(int zone, uint32_t caps, size_t bytes)
 {
@@ -101,8 +102,7 @@ void _trace_event_mbox_atomic(uint32_t event)
 void schedule_task_init(struct task *task, void(*func)(void *),
 	void *data)
 {
-	//check_expected_ptr(task);
-	//check_expected_ptr(data);
+	function_called();
 	(void)task;
 	(void)func;
 	(void)data;
@@ -115,8 +115,9 @@ void schedule_task_free(struct task *task)
 void schedule_task_config(struct task *task, uint16_t priority,
 	uint16_t core)
 {
+	function_called();
 	check_expected(priority);
-	//check_expected(core);
+	check_expected(core);
 
 	(void)task;
 	(void)priority;

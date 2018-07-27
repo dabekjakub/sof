@@ -43,7 +43,7 @@ endif
 #pipeline tests
 
 check_PROGRAMS += pipeline_new
-pipeline_new_SOURCES = ../../src/audio/pipeline.c  src/audio/pipeline/pipeline_new.c src/audio/pipeline/pipeline_mocks.c 
+pipeline_new_SOURCES = src/audio/pipeline/pipeline_new.c src/audio/pipeline/pipeline_mocks.c ../../src/audio/pipeline.c
 
 # volume tests
 

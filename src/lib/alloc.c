@@ -39,21 +39,21 @@
 #include <platform/memory.h>
 #include <stdint.h>
 
-/* debug to set memory value on every allocation */
-#define DEBUG_BLOCK_ALLOC		0
-#define DEBUG_BLOCK_ALLOC_VALUE		0x6b6b6b6b
+ /* debug to set memory value on initialisation and on every free*/
+#define DEBUG_MEMORY_ALLOC			    1
 
-/* debug to set memory value on every free TODO: not working atm */
-#define DEBUG_BLOCK_FREE		0
-#define DEBUG_BLOCK_FREE_VALUE		0x5a5a5a5a
-
-/* memory tracing support */
-#if DEBUG_BLOCK_ALLOC || DEBUG_BLOCK_FREE
-#define trace_mem(__e)	trace_event(TRACE_CLASS_MEM, __e)
-#else
-#define trace_mem(__e)
+/*can only be set if DEBUG_MEMORY_ALLOC is on needed for further
+ *features
+ */
+#if DEBUG_MEMORY_ALLOC
+#define DEBUG_PAGE_COUNTING				0
 #endif
 
+#define DEBUG_MEMORY_ALLOC_VALUE		0x5a5a5a5a
+
+
+#define trace_mem(__e, ...) \
+	trace_event(TRACE_CLASS_MEM, __e, ##__VA_ARGS__)
 #define trace_mem_error(__e)	trace_error(TRACE_CLASS_MEM, __e)
 
 extern struct mm memmap;
@@ -75,11 +75,13 @@ extern struct mm memmap;
 static inline void flush_block_map(struct block_map *map)
 {
 	dcache_writeback_invalidate_region(map->block,
-					   sizeof(*map->block) * map->count);
+		sizeof(*map->block) * map->count);
 	dcache_writeback_invalidate_region(map, sizeof(*map));
 }
 
-/* total size of block */
+/* total size of block
+ * is this real size ? since block map is not in same space
+ */
 static inline uint32_t block_get_size(struct block_map *map)
 {
 	return sizeof(*map) + map->count *
@@ -99,14 +101,24 @@ static inline uint32_t heap_get_size(struct mm_heap *heap)
 	return size;
 }
 
-#if DEBUG_BLOCK_ALLOC || DEBUG_BLOCK_FREE
+/*memset for 4 byte sets with possible  - TODO ARCH optimisation or use
+ *of existing memset() depending on performance
+ */
+#if DEBUG_MEMORY_ALLOC
 static void alloc_memset_region(void *ptr, uint32_t bytes, uint32_t val)
 {
-	uint32_t count = bytes >> 2;
-	uint32_t *dest = ptr, i;
+	uint32_t *ptr_int_32 = ptr;
+	uint8_t *ptr_int_8;
+	int i;
+	int count = bytes >> 2;
+	int r = bytes % 4;
 
 	for (i = 0; i < count; i++)
-		dest[i] = val;
+		ptr_int_32[i] = val;
+
+	ptr_int_8 = (uint8_t *)&ptr_int_32[i];
+	for (i = 0; i < r; i++)
+		ptr_int_8[i] = val;
 }
 #endif
 
@@ -123,13 +135,13 @@ static void *rmalloc_sys(int zone, int core, size_t bytes)
 	/* align address to dcache line size */
 	if (cpu_heap->info.used % PLATFORM_DCACHE_ALIGN)
 		alignment = PLATFORM_DCACHE_ALIGN -
-			(cpu_heap->info.used % PLATFORM_DCACHE_ALIGN);
+		(cpu_heap->info.used % PLATFORM_DCACHE_ALIGN);
 
 	/* always succeeds or panics */
 	if (alignment + bytes > cpu_heap->info.free) {
 		trace_error(TRACE_CLASS_MEM,
-			    "rmalloc-sys eM1 zone %x core %d bytes %d",
-			    zone, core, bytes);
+					"rmalloc-sys eM1 zone %x core %d bytes %d",
+					zone, core, bytes);
 		panic(SOF_IPC_PANIC_MEM);
 	}
 	cpu_heap->info.used += alignment;
@@ -138,10 +150,6 @@ static void *rmalloc_sys(int zone, int core, size_t bytes)
 
 	cpu_heap->info.used += bytes;
 	cpu_heap->info.free -= alignment + bytes;
-
-#if DEBUG_BLOCK_ALLOC
-	alloc_memset_region(ptr, bytes, DEBUG_BLOCK_ALLOC_VALUE);
-#endif
 
 	if ((zone & RZONE_FLAG_MASK) == RZONE_FLAG_UNCACHED)
 		ptr = cache_to_uncache(ptr);
@@ -175,11 +183,9 @@ static void *alloc_block(struct mm_heap *heap, int level,
 			break;
 		}
 	}
-
-#if DEBUG_BLOCK_ALLOC
-	alloc_memset_region(ptr, map->block_size, DEBUG_BLOCK_ALLOC_VALUE);
+#if DEBUG_MEMORY_ALLOC
+	bzero(ptr, map->block_size);
 #endif
-
 	return ptr;
 }
 
@@ -251,11 +257,9 @@ found:
 			}
 		}
 	}
-
-#if DEBUG_BLOCK_ALLOC
-	alloc_memset_region(ptr, bytes, DEBUG_BLOCK_ALLOC_VALUE);
+#if DEBUG_MEMORY_ALLOC
+	bzero(ptr, count * map->block_size);
 #endif
-
 	return ptr;
 }
 
@@ -330,7 +334,7 @@ static void free_block(void *ptr)
 	heap = get_heap_from_ptr(ptr);
 	if (!heap) {
 		trace_error(TRACE_CLASS_MEM, "invalid heap %p cpu %d",
-			    (uintptr_t)ptr, cpu_get_id());
+				   (uintptr_t)ptr, cpu_get_id());
 		return;
 	}
 
@@ -340,13 +344,13 @@ static void free_block(void *ptr)
 
 		/* is ptr in this block */
 		if ((uint32_t)ptr < (block_map->base +
-		    (block_map->block_size * block_map->count)))
+		   (block_map->block_size * block_map->count)))
 			goto found;
 	}
 
 	/* not found */
 	trace_error(TRACE_CLASS_MEM, "invalid ptr %p cpu %d",
-		    (uintptr_t)ptr, cpu_get_id());
+			   (uintptr_t)ptr, cpu_get_id());
 	return;
 
 found:
@@ -372,10 +376,12 @@ found:
 	if (block < block_map->first_free)
 		block_map->first_free = block;
 
-#if DEBUG_BLOCK_FREE
-	/* memset the whole block incase some not aligned ptr*/
-	alloc_memset_region((void *)(block_map->base + block_map->block_size * block),
-			    block_map->block_size * (i - block), DEBUG_BLOCK_FREE_VALUE);
+	/*trace_mem("freeing ptr: %d size: %d", (uint32_t)ptr,
+	 *block_map->block_size * (i - block));
+	 */
+#if DEBUG_MEMORY_ALLOC
+	alloc_memset_region(ptr, block_map->block_size * (i - block),
+		DEBUG_MEMORY_ALLOC_VALUE);
 #endif
 }
 
@@ -422,8 +428,8 @@ find:
 
 error:
 	trace_error(TRACE_CLASS_MEM,
-		    "rmalloc-runtime eMm zone %d caps %x bytes %d",
-		    zone, caps, bytes);
+				"rmalloc-runtime eMm zone %d caps %x bytes %d",
+				zone, caps, bytes);
 	return NULL;
 }
 
@@ -516,7 +522,7 @@ void *rballoc(int zone, uint32_t caps, size_t bytes)
 	if (heap->blocks == 1) {
 		ptr = alloc_cont_blocks(heap, 0, caps, bytes);
 		goto out;
-	} else {
+	}	else {
 
 		/* find best block size for request */
 		for (i = 0; i < heap->blocks; i++) {
@@ -547,18 +553,14 @@ void rfree(void *ptr)
 	if (!ptr)
 		return;
 
-	/* operate only on cached addresses */
-	if (is_uncached(ptr))
-		ptr = uncache_to_cache(ptr);
-
 	/* use the heap dedicated for the selected core */
 	cpu_heap = cache_to_uncache(memmap.system + cpu_get_id());
 
 	/* panic if pointer is from system heap */
 	if (ptr >= (void *)cpu_heap->heap &&
-	    ptr <= (void *)cpu_heap->heap + cpu_heap->size) {
+		ptr <= (void *)cpu_heap->heap + cpu_heap->size) {
 		trace_error(TRACE_CLASS_MEM, "attempt to free system heap %p cpu %d",
-			    (uintptr_t)ptr, cpu_get_id());
+				   (uintptr_t)ptr, cpu_get_id());
 		panic(SOF_IPC_PANIC_MEM);
 	}
 
@@ -601,7 +603,7 @@ void free_heap(int zone)
 	 * otherwise this is critical flow issue.
 	 */
 	if (cpu_get_id() == PLATFORM_MASTER_CORE_ID ||
-	    zone != RZONE_SYS) {
+		zone != RZONE_SYS) {
 		trace_mem_error("eMf");
 		panic(SOF_IPC_PANIC_MEM);
 	}
@@ -611,15 +613,51 @@ void free_heap(int zone)
 	cpu_heap->info.free = cpu_heap->size;
 }
 
-/* initialise map */
-void init_heap(struct sof *sof)
+static void init_heap_maps(struct mm_heap *heap_map, int heap_count)
 {
 	struct mm_heap *heap;
 	struct block_map *next_map;
 	struct block_map *current_map;
-	int i;
-	int j;
+	int i, j;
 
+	/* initialise map */
+	for (i = 0; i < heap_count; i++) {
+
+		heap = &heap_map[i];
+
+		/* init the map[0] */
+		current_map = &heap->map[0];
+		current_map->base = heap->heap;
+#if DEBUG_MEMORY_ALLOC
+                alloc_memset_region(
+					(void*)current_map->base,
+                    current_map->block_size * current_map->count,
+                    DEBUG_MEMORY_ALLOC_VALUE);
+#endif
+		flush_block_map(current_map);
+
+		/* map[j]'s base is calculated based on map[j-1] */
+		for (j = 1; j < heap->blocks; j++) {
+			next_map = &heap->map[j];
+			next_map->base = current_map->base +
+				current_map->block_size *
+				current_map->count;
+			current_map = &heap->map[j];
+#if DEBUG_MEMORY_ALLOC
+			alloc_memset_region((void *)current_map->base,
+				current_map->block_size *
+				current_map->count, DEBUG_MEMORY_ALLOC_VALUE);
+#endif
+			flush_block_map(current_map);
+		}
+
+		dcache_writeback_invalidate_region(heap, sizeof(*heap));
+	}
+}
+
+/* initialise map */
+void init_heap(struct sof *sof)
+{
 	/* sanity check for malformed images or loader issues */
 	if (memmap.system[0].heap != HEAP_SYSTEM_0_BASE)
 		panic(SOF_IPC_PANIC_MEM);
@@ -627,46 +665,9 @@ void init_heap(struct sof *sof)
 	spinlock_init(&memmap.lock);
 
 	/* initialise buffer map */
-	for (i = 0; i < PLATFORM_HEAP_BUFFER; i++) {
-		heap = &memmap.buffer[i];
-
-		/* init the map[0] */
-		current_map = &heap->map[0];
-		current_map->base = heap->heap;
-		flush_block_map(current_map);
-
-		/* map[j]'s base is calculated based on map[j-1] */
-		for (j = 1; j < heap->blocks; j++) {
-			next_map = &heap->map[j];
-			next_map->base = current_map->base +
-				current_map->block_size *
-				current_map->count;
-			current_map = &heap->map[j];
-			flush_block_map(current_map);
-		}
-
-		dcache_writeback_invalidate_region(heap, sizeof(*heap));
-	}
-
+	init_heap_maps((struct mm_heap *)&memmap.buffer, PLATFORM_HEAP_BUFFER);
 	/* initialise runtime map */
-	for (i = 0; i < PLATFORM_HEAP_RUNTIME; i++) {
-		heap = &memmap.runtime[i];
-
-		/* init the map[0] */
-		current_map = &heap->map[0];
-		current_map->base = heap->heap;
-		flush_block_map(current_map);
-
-		/* map[j]'s base is calculated based on map[j-1] */
-		for (j = 1; j < heap->blocks; j++) {
-			next_map = &heap->map[j];
-			next_map->base = current_map->base +
-				current_map->block_size *
-				current_map->count;
-			current_map = &heap->map[j];
-			flush_block_map(current_map);
-		}
-
-		dcache_writeback_invalidate_region(heap, sizeof(*heap));
-	}
+	init_heap_maps((struct mm_heap *)&memmap.runtime,
+					PLATFORM_HEAP_RUNTIME);
 }
+

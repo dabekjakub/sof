@@ -39,20 +39,10 @@
 #include <platform/memory.h>
 #include <stdint.h>
 
-/* debug to set memory value on every allocation */
-#define DEBUG_BLOCK_ALLOC		0
-#define DEBUG_BLOCK_ALLOC_VALUE		0x6b6b6b6b
 
 /* debug to set memory value on every free TODO: not working atm */
-#define DEBUG_BLOCK_FREE		0
-#define DEBUG_BLOCK_FREE_VALUE		0x5a5a5a5a
-
-/* memory tracing support */
-#if DEBUG_BLOCK_ALLOC || DEBUG_BLOCK_FREE
-#define trace_mem(__e)	trace_event(TRACE_CLASS_MEM, __e)
-#else
-#define trace_mem(__e)
-#endif
+#define DEBUG_BLOCK_FREE		1
+#define DEBUG_BLOCK_FREE_VALUE		0x5a
 
 #define trace_mem_error(__e)	trace_error(TRACE_CLASS_MEM, __e)
 
@@ -99,17 +89,6 @@ static inline uint32_t heap_get_size(struct mm_heap *heap)
 	return size;
 }
 
-#if DEBUG_BLOCK_ALLOC || DEBUG_BLOCK_FREE
-static void alloc_memset_region(void *ptr, uint32_t bytes, uint32_t val)
-{
-	uint32_t count = bytes >> 2;
-	uint32_t *dest = ptr, i;
-
-	for (i = 0; i < count; i++)
-		dest[i] = val;
-}
-#endif
-
 /* allocate from system memory pool */
 static void *rmalloc_sys(int zone, int core, size_t bytes)
 {
@@ -138,10 +117,6 @@ static void *rmalloc_sys(int zone, int core, size_t bytes)
 
 	cpu_heap->info.used += bytes;
 	cpu_heap->info.free -= alignment + bytes;
-
-#if DEBUG_BLOCK_ALLOC
-	alloc_memset_region(ptr, bytes, DEBUG_BLOCK_ALLOC_VALUE);
-#endif
 
 	if ((zone & RZONE_FLAG_MASK) == RZONE_FLAG_UNCACHED)
 		ptr = cache_to_uncache(ptr);
@@ -176,9 +151,7 @@ static void *alloc_block(struct mm_heap *heap, int level,
 		}
 	}
 
-#if DEBUG_BLOCK_ALLOC
-	alloc_memset_region(ptr, map->block_size, DEBUG_BLOCK_ALLOC_VALUE);
-#endif
+	 bzero(ptr, map->block_size);
 
 	return ptr;
 }
@@ -252,9 +225,7 @@ found:
 		}
 	}
 
-#if DEBUG_BLOCK_ALLOC
-	alloc_memset_region(ptr, bytes, DEBUG_BLOCK_ALLOC_VALUE);
-#endif
+	bzero(ptr, count * map->block_size);
 
 	return ptr;
 }
@@ -359,7 +330,9 @@ found:
 		panic(SOF_IPC_PANIC_MEM);
 
 	/* free block header and continuous blocks */
-	for (i = block; i < block + hdr->size; i++) {
+	int size_tmp = block + hdr->size;
+
+	for (i = block; i < size_tmp; i++) {
 		hdr = cache_to_uncache(&block_map->block[i]);
 		hdr->size = 0;
 		hdr->used = 0;
@@ -374,8 +347,9 @@ found:
 
 #if DEBUG_BLOCK_FREE
 	/* memset the whole block incase some not aligned ptr*/
-	alloc_memset_region((void *)(block_map->base + block_map->block_size * block),
-			    block_map->block_size * (i - block), DEBUG_BLOCK_FREE_VALUE);
+	memset((void *)(block_map->base + block_map->block_size * block),
+		   block_map->block_size * (i - block),
+		   DEBUG_BLOCK_FREE_VALUE);
 #endif
 }
 
@@ -633,6 +607,11 @@ void init_heap(struct sof *sof)
 		/* init the map[0] */
 		current_map = &heap->map[0];
 		current_map->base = heap->heap;
+#if DEBUG_BLOCK_FREE
+		memset((void *)current_map->base,
+			   DEBUG_BLOCK_FREE_VALUE,
+			   current_map->block_size * current_map->count);
+#endif
 		flush_block_map(current_map);
 
 		/* map[j]'s base is calculated based on map[j-1] */
@@ -642,6 +621,12 @@ void init_heap(struct sof *sof)
 				current_map->block_size *
 				current_map->count;
 			current_map = &heap->map[j];
+#if DEBUG_BLOCK_FREE
+			memset((void *)current_map->base,
+				   DEBUG_BLOCK_FREE_VALUE,
+				   current_map->block_size *
+				   current_map->count);
+#endif
 			flush_block_map(current_map);
 		}
 
@@ -655,6 +640,11 @@ void init_heap(struct sof *sof)
 		/* init the map[0] */
 		current_map = &heap->map[0];
 		current_map->base = heap->heap;
+#if DEBUG_BLOCK_FREE
+		memset((void *)current_map->base,
+				DEBUG_BLOCK_FREE_VALUE,
+				current_map->block_size * current_map->count);
+#endif
 		flush_block_map(current_map);
 
 		/* map[j]'s base is calculated based on map[j-1] */
@@ -664,6 +654,12 @@ void init_heap(struct sof *sof)
 				current_map->block_size *
 				current_map->count;
 			current_map = &heap->map[j];
+#if DEBUG_BLOCK_FREE
+			memset((void *)current_map->base,
+				   DEBUG_BLOCK_FREE_VALUE,
+				   current_map->block_size *
+				   current_map->count);
+#endif
 			flush_block_map(current_map);
 		}
 

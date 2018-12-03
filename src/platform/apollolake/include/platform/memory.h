@@ -332,7 +332,7 @@
 
 #define PLATFORM_HEAP_SYSTEM		2 /* one per core */
 #define PLATFORM_HEAP_RUNTIME		1
-#define PLATFORM_HEAP_BUFFER		3
+#define PLATFORM_HEAP_BUFFER		2 /*should be 3 when lp is enabled for APOLLOLAKE*/
 
 /* Stack configuration */
 #define SOF_LP_STACK_SIZE		0x1000
@@ -374,11 +374,23 @@
 /** \brief Manifest size (seems unused). */
 #define IMR_BOOT_LDR_MANIFEST_SIZE	0x6000
 
+#define UNIT_TESTS 1
+
+#ifndef UNIT_TESTS
+
 #define uncache_to_cache(address) \
 	((__typeof__((address)))((uint32_t)((address)) + SRAM_ALIAS_OFFSET))
 #define cache_to_uncache(address) \
 	((__typeof__((address)))((uint32_t)((address)) - SRAM_ALIAS_OFFSET))
 #define is_uncached(address) \
 	(((uint32_t)(address) & HP_SRAM_MASK) != HP_SRAM_BASE)
+
+#else
+
+#define uncache_to_cache(address) address
+#define cache_to_uncache(address) address
+#define is_uncached(address) 0
+
+#endif
 
 #endif

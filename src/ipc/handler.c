@@ -902,13 +902,26 @@ static int ipc_glb_tplg_comp_new(uint32_t header)
 {
 	struct sof_ipc_comp comp;
 	struct sof_ipc_comp_reply reply;
-	int ret;
+	int ret, i;
 
+	struct sof_ipc_comp_dai *ipc_dai = (struct sof_ipc_comp_dai *)_ipc->comp_data;
 	/* copy message with ABI safe method */
+	trace_ipc("ipc comp hdr size: %d", ipc_dai->comp.hdr.size );
+        for (i = 0; i < ((struct sof_ipc_comp *)_ipc->comp_data)->hdr.size/4;
+             i++) 
+		{
+			trace_ipc("ipc data byte:%x data: %x", i ,
+				((uint32_t *)_ipc->comp_data)[i]);
+        }
+
+		
 	IPC_COPY_CMD(comp, _ipc->comp_data);
 
 	trace_ipc("ipc: pipe %d comp %d -> new (type %d)", comp.pipeline_id,
 		  comp.id, comp.type);
+	trace_ipc("hdr size %d ipc_data ptr: %p",
+		((struct sof_ipc_comp *)_ipc->comp_data)->hdr.size,
+		(uintptr_t)_ipc->comp_data);
 
 	/* register component */
 	ret = ipc_comp_new(_ipc, (struct sof_ipc_comp *)_ipc->comp_data);
@@ -966,7 +979,7 @@ static int ipc_glb_tplg_pipe_new(uint32_t header)
 	/* copy message with ABI safe method */
 	IPC_COPY_CMD(ipc_pipeline, _ipc->comp_data);
 
-	trace_ipc("ipc: pipe %d -> new", ipc_pipeline.pipeline_id);
+	trace_ipc("ipc: pipe %d -> new , size : %x", ipc_pipeline.pipeline_id ,((struct sof_ipc_pipe_new *)_ipc->comp_data)->hdr.size );
 
 	ret = ipc_pipeline_new(_ipc,
 			       (struct sof_ipc_pipe_new *)_ipc->comp_data);

@@ -48,7 +48,7 @@
 #include <config.h>
 
 static struct dai ssp[(DAI_NUM_SSP_BASE + DAI_NUM_SSP_EXT)];
-
+#define trace_dai(__e, ...) trace_event(TRACE_CLASS_DAI, __e, ##__VA_ARGS__)
 #if defined CONFIG_DMIC
 
 static struct dai dmic[2] = {
@@ -122,8 +122,9 @@ static struct dai_type_info dti[] = {
 
 int dai_init(void)
 {
-	int i;
 
+	int i;
+  
 	/* init ssp */
 	for (i = 0; i < ARRAY_SIZE(ssp); i++) {
 		ssp[i].type = SOF_DAI_INTEL_SSP;
@@ -156,6 +157,7 @@ int dai_init(void)
 	for (i = 0; i < ARRAY_SIZE(dmic); i++)
 		spinlock_init(&dmic[i].lock);
 #endif
+	trace_dai("dai_init() arraysize dti: %x" , ARRAY_SIZE(dti));
 	dai_install(dti, ARRAY_SIZE(dti));
 	return 0;
 }

@@ -51,8 +51,18 @@ void dai_install(struct dai_type_info *dai_type_array, size_t num_dai_types)
 static inline struct dai_type_info *dai_find_type(uint32_t type)
 {
 	struct dai_type_info *dti;
+  
+	if (!lib_dai.dai_type_array)
+		{
+		trace_dai("dai_find_type() dai_type_array is null");
+        }
+	else
+		{
+		trace_dai("dai_find_type() dai_type_array :%p , dai_types: %x ", (uintptr_t)lib_dai.dai_type_array , lib_dai.num_dai_types);
+		}
 	for (dti = lib_dai.dai_type_array;
 	     dti < lib_dai.dai_type_array + lib_dai.num_dai_types; dti++) {
+          trace_dai("dai_find_type() dti->type : %x", dti->type);
 		if (dti->type == type)
 			return dti;
 	}
@@ -61,11 +71,14 @@ static inline struct dai_type_info *dai_find_type(uint32_t type)
 
 struct dai *dai_get(uint32_t type, uint32_t index, uint32_t flags)
 {
+	trace_dai("dai_get() type %x index %x flags %x",type,index,flags);
 	int ret = 0;
 	struct dai_type_info *dti;
 	struct dai *d;
 
 	dti = dai_find_type(type);
+        if (!dti)
+          trace_dai("dai_get() dai find type returned null");
 	if (!dti)
 		return NULL; /* type not found */
 

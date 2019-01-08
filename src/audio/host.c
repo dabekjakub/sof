@@ -335,7 +335,9 @@ static struct comp_dev *host_new(struct sof_ipc_comp *comp)
 	int err;
 #endif
 
-	trace_host("host_new()");
+	trace_host("host_new() size:%x ipc_data ptr: %p" ,
+		ipc_host->config.hdr.size,
+		(uintptr_t)ipc_host);
 
 	if (IPC_IS_SIZE_INVALID(ipc_host->config)) {
 		IPC_SIZE_ERROR_TRACE(TRACE_CLASS_HOST, ipc_host->config);

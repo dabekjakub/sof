@@ -173,12 +173,27 @@ static struct comp_dev *dai_new(struct sof_ipc_comp *comp)
 	struct sof_ipc_comp_dai *dai;
 	struct sof_ipc_comp_dai *ipc_dai = (struct sof_ipc_comp_dai *)comp;
 	struct dai_data *dd;
+        int i;
 	uint32_t dir, caps, dma_dev;
 
 	trace_dai("dai_new()");
-
+	trace_dai("ipc size ipc_dai ptr %p , config size: %x"
+		"comp hdr size: %x",
+			(uintptr_t)ipc_dai,
+			ipc_dai->config.hdr.size,
+		ipc_dai->comp.hdr.size);
+	trace_ipc("comp ptr %p", (uintptr_t)comp );
+	  for (i = 0; i < ipc_dai->comp.hdr.size/4;
+             i++) 
+		{
+			trace_ipc("ipc data byte:%x data: %x", i ,
+				((uint32_t *)comp)[i] );
+        }
 	if (IPC_IS_SIZE_INVALID(ipc_dai->config)) {
 		IPC_SIZE_ERROR_TRACE(TRACE_CLASS_DAI, ipc_dai->config);
+		trace_dai("ipc size error ipc_dai ptr %p , size: %x",
+			(uintptr_t)ipc_dai,
+			ipc_dai->config.hdr.size);
 		return NULL;
 	}
 
@@ -197,7 +212,7 @@ static struct comp_dev *dai_new(struct sof_ipc_comp *comp)
 	}
 
 	comp_set_drvdata(dev, dd);
-
+	trace_dai("dai_new() dai->type :%x ipc_dai type :%x ",dai->type , ipc_dai->type);
 	dd->dai = dai_get(dai->type, dai->dai_index, DAI_CREAT);
 	if (dd->dai == NULL) {
 		trace_dai_error("dai_new() error: dai_get() failed to create "

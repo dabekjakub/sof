@@ -502,8 +502,10 @@ static int ipc_stream_trigger(uint32_t header)
 
 static int ipc_glb_stream_message(uint32_t header)
 {
+	int i,j = 0;
+	
 	uint32_t cmd = (header & SOF_CMD_TYPE_MASK) >> SOF_CMD_TYPE_SHIFT;
-
+	cmd = i/j;
 	switch (cmd) {
 	case iCS(SOF_IPC_STREAM_PCM_PARAMS):
 		return ipc_stream_pcm_params(header);

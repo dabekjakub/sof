@@ -457,6 +457,8 @@ static int ipc_stream_trigger(uint32_t header)
 	uint32_t cmd;
 	int ret;
 
+	struct ipc_comp_dev *pcm_dev_copy;
+
 	/* copy message with ABI safe method */
 	IPC_COPY_CMD(stream, _ipc->comp_data);
 
@@ -468,6 +470,7 @@ static int ipc_stream_trigger(uint32_t header)
 		trace_ipc_error("ipc: comp %d not found", stream.comp_id);
 		return -ENODEV;
 	}
+	__vec_memcpy(pcm_dev , pcm_dev_copy , 2);
 
 	switch (ipc_cmd) {
 	case iCS(SOF_IPC_STREAM_TRIG_START):

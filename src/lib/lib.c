@@ -63,8 +63,28 @@ void cmemcpy(void *dest, void *src, size_t size)
 /* used by gcc - but uses arch_memcpy internally */
 void *memcpy(void *dest, const void *src, size_t n)
 {
-	arch_memcpy(dest, src, n);
+	rmemcpy(dest, src, n);
+	//arch_memcpy(dest, src, n);
 	return dest;
+}
+
+int memcpy_s(void *dest, size_t dest_size, const void *src, size_t src_size) {
+  if (!dest || !src)
+    return -EINVAL;
+
+  if ((dest + dest_size >= src && dest + dest_size <= src + src_size) ||
+      (src + src_size >= dest && src + src_size <= dest + dest_size))
+    return -EINVAL;
+
+  if (src_size > dest_size) {
+    bzero(dest, dest_size);
+    return -EINVAL;
+  }
+
+  if (!memcpy(dest, src, src_size))
+    return -ENOMEM;
+
+  return 0;
 }
 
 /* generic bzero - TODO: can be optimsed for ARCH ? */

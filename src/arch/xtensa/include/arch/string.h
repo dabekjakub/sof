@@ -33,8 +33,11 @@
 #define __INCLUDE_ARCH_STRING_SOF__
 
 void *xthal_memcpy(void *dst, const void *src, size_t len);
+void * __vec_memcpy(void * s, const void * c, size_t n);
 
-#define arch_memcpy(dest, src, size) \
+#define arch_ram_memcpy(dest, src, size) \
 	xthal_memcpy(dest, src, size)
+#define arch_memcpy(dest, src, size) \
+	__vec_memcpy(dest, src, size)
 
 #endif

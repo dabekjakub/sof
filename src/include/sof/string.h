@@ -38,7 +38,7 @@ void cmemcpy(void *dest, void *src, size_t size);
 
 #if defined(arch_memcpy)
 #define rmemcpy(dest, src, size) \
-	arch_memcpy(dest, src, size)
+	arch_ram_memcpy(dest, src, size)
 #else
 #define rmemcpy(dest, src, size) \
 	cmemcpy(dest, src, size)

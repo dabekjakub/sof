@@ -32,9 +32,53 @@
 #ifndef __INCLUDE_ARCH_STRING_SOF__
 #define __INCLUDE_ARCH_STRING_SOF__
 
-void *xthal_memcpy(void *dst, const void *src, size_t len);
+#include <errno.h>
 
-#define arch_memcpy(dest, src, size) \
-	xthal_memcpy(dest, src, size)
+void *memcpy(void *dest, const void *src, size_t n);
+int memcpy_s(void *dest, size_t dest_size, const void *src, size_t src_size);
+void *xthal_memcpy(void *dst, const void *src, size_t len);
+void *__vec_memcpy(void *dst, const void *src, size_t len);
+void *__vec_memset(void *dest, int data, size_t src_size);
+
+#define arch_memcpy(dest, src, size) xthal_memcpy(dest, src, size)
+
+static inline int arch_memcpy_s(void *dest, size_t dest_size, const void *src,
+								size_t src_size)
+{
+	if (!dest || !src)
+		return -EINVAL;
+
+	if ((dest + dest_size >= src && dest + dest_size <= src + src_size) ||
+		(src + src_size >= dest && src + src_size <= dest + dest_size))
+		return -EINVAL;
+
+	if (src_size > dest_size)
+		return -EINVAL;
+#if __XCC__
+	__vec_memcpy(dest, src, src_size);
+#else
+	memcpy(dest, src, src_size);
+#endif
+	return 0;
+}
+
+static inline int arch_memset_s(void *dest, size_t dest_size,
+								int data, size_t count)
+{
+	if (!dest)
+		return -EINVAL;
+
+	if (count > dest_size)
+		return -EINVAL;
+
+#if __XCC__ && !CONFIG_HOST
+	if (!__vec_memset(dest, data, count))
+		return -ENOMEM;
+#else
+	if (!memset(dest, data, count))
+		return -ENOMEM;
+#endif
+	return 0;
+}
 
 #endif

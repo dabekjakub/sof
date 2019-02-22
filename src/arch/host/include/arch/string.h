@@ -32,7 +32,28 @@
 #ifndef __INCLUDE_ARCH_STRING_SOF__
 #define __INCLUDE_ARCH_STRING_SOF__
 
+#include <errno.h>
+
 #define arch_memcpy(dest, src, size) \
 	memcpy(dest, src, size)
+
+static inline int arch_memcpy_s(void *dest,	size_t dest_size,
+								const void *src, size_t src_size)
+{
+	if (!dest || !src)
+		return -EINVAL;
+
+	if ((dest + dest_size >= src && dest + dest_size <= src + src_size) ||
+		(src + src_size >= dest && src + src_size <= dest + dest_size))
+		return -EINVAL;
+
+	if (src_size > dest_size)
+		return -EINVAL;
+
+	if (!memcpy(dest, src, src_size))
+		return -ENOMEM;
+
+	return 0;
+}
 
 #endif

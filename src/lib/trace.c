@@ -63,8 +63,9 @@ static struct trace *trace;
 
 #define TRACE_ID_MASK ((1 << TRACE_ID_LENGTH) - 1)
 
-static void put_header(uint32_t *dst, uint32_t id_0, uint32_t id_1,
-		       uint32_t entry, uint64_t timestamp)
+static void put_header(uint32_t *dst, size_t dst_size,
+					   uint32_t id_0, uint32_t id_1,
+					   uint32_t entry, uint64_t timestamp)
 {
 	struct log_entry_header header;
 
@@ -74,7 +75,7 @@ static void put_header(uint32_t *dst, uint32_t id_0, uint32_t id_1,
 	header.timestamp = timestamp;
 	header.log_entry_address = entry;
 
-	memcpy(dst, &header, sizeof(header));
+	memops_memcpy_s(dst, dst_size, &header, sizeof(header));
 }
 
 static void mtrace_event(const char *data, uint32_t length)
@@ -127,7 +128,7 @@ META_IF_ELSE(is_atomic)(_atomic)()					\
 	if (!trace->enable)						\
 		return;							\
 									\
-	put_header(dt, id_0, id_1, log_entry,				\
+	put_header(dt, sizeof(dt), id_0, id_1, log_entry,	\
 		   platform_timer_get(platform_timer));			\
 									\
 	_TRACE_EVENT_NTH_PAYLOAD_IMPL(arg_count)			\

@@ -435,8 +435,11 @@ static struct comp_dev *file_new(struct sof_ipc_comp *comp)
 
 	/* copy file comp config */
 	file = (struct sof_ipc_comp_file *)&dev->comp;
-	memcpy(file, ipc_file, sizeof(struct sof_ipc_comp_file));
-
+	if (memops_memcpy_s(file, sizeof(*file),
+	   ipc_file, sizeof(struct sof_ipc_comp_file)))	{
+		rfree(dev);
+		return NULL;
+	}
 	/* allocate  memory for file comp data */
 	cd = rzalloc(RZONE_RUNTIME, SOF_MEM_CAPS_RAM, sizeof(*cd));
 	if (!cd) {

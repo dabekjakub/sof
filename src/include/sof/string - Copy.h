@@ -26,16 +26,12 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
- *
  */
 
-#ifndef __INCLUDE_ARCH_STRING_SOF__
-#define __INCLUDE_ARCH_STRING_SOF__
+#ifndef __INCLUDE_MEMOPS_SOF__
+#define __INCLUDE_MEMOPS_SOF__
 
-#include <errno.h>
+#include <arch/memops.h>
 
-void *xthal_memcpy(void *dst, const void *src, size_t len);
-
-#define arch_memcpy(dest, src, size) xthal_memcpy(dest, src, size)
 
 #endif

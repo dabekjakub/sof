@@ -507,7 +507,11 @@ static struct comp_dev *eq_iir_new(struct sof_ipc_comp *comp)
 	if (!dev)
 		return NULL;
 
-	memcpy(&dev->comp, comp, sizeof(struct sof_ipc_comp_eq_iir));
+	if (memops_memcpy_s(&dev->comp, sizeof(dev->comp),
+	    comp, sizeof(struct sof_ipc_comp_eq_iir))) {
+		rfree(dev);
+		return NULL;
+	}
 
 	cd = rzalloc(RZONE_RUNTIME, SOF_MEM_CAPS_RAM, sizeof(*cd));
 	if (!cd) {
@@ -533,7 +537,8 @@ static struct comp_dev *eq_iir_new(struct sof_ipc_comp *comp)
 			return NULL;
 		}
 
-		memcpy(cd->config, ipc_iir->data, bs);
+		memops_memcpy_s(cd->config, sizeof(*cd->config),
+						ipc_iir->data, bs);
 	}
 
 	for (i = 0; i < PLATFORM_MAX_CHANNELS; i++)
@@ -584,7 +589,12 @@ static int iir_cmd_get_data(struct comp_dev *dev,
 			if (bs > SOF_EQ_IIR_MAX_SIZE || bs == 0 ||
 			    bs > max_size)
 				return -EINVAL;
-			memcpy(cdata->data->data, cd->config, bs);
+
+			if (memops_memcpy_s(cdata->data->data,
+			   ((struct sof_abi_hdr *)
+			   (cdata->data))->size, cd->config, bs))
+				return -EINVAL;
+
 			cdata->data->abi = SOF_ABI_VERSION;
 			cdata->data->size = bs;
 		} else {
@@ -685,7 +695,11 @@ static int iir_cmd_set_data(struct comp_dev *dev,
 		/* Just copy the configurate. The EQ will be initialized in
 		 * prepare().
 		 */
-		memcpy(cd->config, cdata->data->data, bs);
+
+		if (memops_memcpy_s(cd->config, sizeof(*cd->config),
+		    cdata->data->data, bs))
+			return -EINVAL;
+
 		break;
 	default:
 		trace_eq_error("iir_cmd_set_data() error: invalid cdata->cmd");

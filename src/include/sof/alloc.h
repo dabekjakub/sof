@@ -39,6 +39,7 @@
 #include <platform/memory.h>
 #include <arch/spinlock.h>
 #include <uapi/ipc/topology.h>
+#include <arch/memops.h>
 
 struct sof;
 
@@ -184,11 +185,11 @@ void alloc_trace_buffer_heap(int zone, uint32_t caps, size_t bytes);
 void *rzalloc_core_sys(int core, size_t bytes);
 
 /* utility */
-inline void bzero(void *s, size_t n);
-void *memset(void *s, int c, size_t n);
-int memset_s(void *dest, size_t dest_size, int data, size_t count);
 int rstrlen(const char *s);
 int rstrcmp(const char *s1, const char *s2);
+
+#define bzero(ptr, size) \
+	memset(ptr, 0, size)
 
 /* Heap save/restore contents and context for PM D0/D3 events */
 uint32_t mm_pm_context_size(void);

@@ -105,16 +105,16 @@
 #define _IPC_COPY_CMD(rx, tx, rx_size)					\
 	do {								\
 		if (rx_size > tx->size) {				\
-			memcpy(rx, tx, tx->size);			\
+			memops_memcpy_s(rx, sizeof(rx), tx, tx->size);	\
 			bzero((void *)rx + tx->size, rx_size - tx->size);\
 			trace_ipc("ipc: hdr 0x%x rx (%d) > tx (%d)",	\
 				  rx->cmd, rx_size, tx->size);		\
 		} else if (tx->size > rx_size) {			\
-			memcpy(rx, tx, rx_size);			\
+			memops_memcpy_s(rx, sizeof(rx), tx, rx_size);	\
 			trace_ipc("ipc: hdr 0x%x tx (%d) > rx (%d)",	\
 				  rx->cmd, tx->size, rx_size);		\
 		} else							\
-			memcpy(rx, tx, rx_size);			\
+			memops_memcpy_s(rx, sizeof(rx), tx, rx_size);	\
 	} while (0)
 
 /* copies whole message from Tx to Rx, follows above ABI rules */

@@ -105,7 +105,9 @@ static int read_array(struct snd_soc_tplg_vendor_array *array)
 			ret = fread(&uuid, size, 1, file);
 			if (ret != 1)
 				return -EINVAL;
-			memcpy(&array->uuid[j], &uuid, size);
+			if (memops_memcpy_s(&array->uuid[j],
+				sizeof(array->uuid[j]), &uuid, size))
+				return -EINVAL;
 		}
 		break;
 	case SND_SOC_TPLG_TUPLE_TYPE_STRING:
@@ -116,7 +118,9 @@ static int read_array(struct snd_soc_tplg_vendor_array *array)
 			ret = fread(&string, size, 1, file);
 			if (ret != 1)
 				return -EINVAL;
-			memcpy(&array->string[j], &string, size);
+			if (memops_memcpy_s(&array->string[j],
+				sizeof(array->string[j]), &string, size))
+				return -EINVAL;
 		}
 		break;
 	case SND_SOC_TPLG_TUPLE_TYPE_BOOL:
@@ -129,7 +133,9 @@ static int read_array(struct snd_soc_tplg_vendor_array *array)
 			ret = fread(&value, size, 1, file);
 			if (ret != 1)
 				return -EINVAL;
-			memcpy(&array->value[j], &value, size);
+			if (memops_memcpy_s(&array->value[j],
+				sizeof(array->value[j]), &value, size))
+				return -EINVAL;
 		}
 		break;
 	default:

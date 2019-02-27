@@ -60,14 +60,18 @@ int comp_register(struct comp_driver *drv)
 	switch (drv->type) {
 	case SOF_COMP_MIXER:
 		dst = &mixer_drv_mock;
+		if (memops_memcpy_s(dst, sizeof(mixer_drv_mock),
+		   drv, sizeof(struct comp_driver)))
+			return -EINVAL;
 		break;
 
 	case SOF_COMP_MOCK:
 		dst = &drv_mock;
+		if (memops_memcpy_s(dst, sizeof(drv_mock), drv,
+			sizeof(struct comp_driver)))
+			return -EINVAL;
 		break;
 	}
-
-	memcpy(dst, drv, sizeof(struct comp_driver));
 
 	return 0;
 }
@@ -118,7 +122,9 @@ static struct comp_dev *create_comp(struct sof_ipc_comp *comp,
 
 	assert_non_null(cd);
 
-	memcpy(&cd->comp, comp, sizeof(*comp));
+	memops_memcpy_s(&cd->comp, sizeof(cd->comp),
+		comp, sizeof(*comp)))
+
 	cd->drv = drv;
 	spinlock_init(&cd->lock);
 	list_init(&cd->bsource_list);

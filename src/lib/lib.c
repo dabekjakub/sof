@@ -68,22 +68,6 @@ void *memcpy(void *dest, const void *src, size_t n)
 	return dest;
 }
 
-int memcpy_s(void *dest, size_t dest_size, const void *src, size_t src_size)
-{
-	return arch_memcpy_s(dest, dest_size, src, src_size);
-}
-
-int memset_s(void *dest, size_t dest_size, int data, size_t count)
-{
-	return arch_memset_s(dest, dest_size, data, count);
-}
-
-/* generic bzero */
-inline void bzero(void *s, size_t n)
-{
-	memset(s, 0, n);
-}
-
 /* generic memset */
 void *memset(void *s, int c, size_t n)
 {
@@ -97,6 +81,17 @@ void *memset(void *s, int c, size_t n)
 	return s;
 }
 #endif
+
+int memops_memcpy_s(void *dest, size_t dest_size,
+					const void *src, size_t src_size)
+{
+	return arch_memcpy_s(dest, dest_size, src, src_size);
+}
+
+int memops_memset_s(void *dest, size_t dest_size, int data, size_t count)
+{
+	return arch_memset_s(dest, dest_size, data, count);
+}
 
 /* generic strlen - TODO: can be optimsed for ARCH ? */
 int rstrlen(const char *s)

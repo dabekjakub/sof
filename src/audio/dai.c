@@ -197,7 +197,12 @@ static struct comp_dev *dai_new(struct sof_ipc_comp *comp)
 		return NULL;
 
 	dai = (struct sof_ipc_comp_dai *)&dev->comp;
-	memcpy(dai, ipc_dai, sizeof(struct sof_ipc_comp_dai));
+
+	if (memops_memcpy_s(dai, sizeof(*dai), ipc_dai,
+	   sizeof(struct sof_ipc_comp_dai))) {
+		rfree(dev);
+		return NULL;
+	}
 
 	dd = rzalloc(RZONE_RUNTIME, SOF_MEM_CAPS_RAM, sizeof(*dd));
 	if (!dd) {

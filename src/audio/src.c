@@ -582,7 +582,11 @@ static struct comp_dev *src_new(struct sof_ipc_comp *comp)
 		return NULL;
 
 	src = (struct sof_ipc_comp_src *)&dev->comp;
-	memcpy(src, ipc_src, sizeof(struct sof_ipc_comp_src));
+	if (memops_memcpy_s(src, sizeof(*src), ipc_src,
+	    sizeof(struct sof_ipc_comp_src))) {
+		rfree(dev);
+		return NULL;
+	}
 
 	cd = rzalloc(RZONE_RUNTIME, SOF_MEM_CAPS_RAM, sizeof(*cd));
 	if (!cd) {

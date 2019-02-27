@@ -25,17 +25,51 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  *
- * Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
+ * Author: Jakub Dabek <jakub.dabek@linux.intel.com>
  *
  */
 
-#ifndef __INCLUDE_ARCH_STRING_SOF__
-#define __INCLUDE_ARCH_STRING_SOF__
+#ifndef __INCLUDE_ARCH_MEMOPS_SOF__
+#define __INCLUDE_ARCH_MEMOPS_SOF__
 
 #include <errno.h>
 
-void *xthal_memcpy(void *dst, const void *src, size_t len);
+int memops_memset_s(void *dest, size_t dest_size,
+					int data, size_t count);
+int memops_memcpy_s(void *dest, size_t dest_size,
+					const void *src, size_t src_size);
 
-#define arch_memcpy(dest, src, size) xthal_memcpy(dest, src, size)
+static inline int arch_memcpy_s(void *dest, size_t dest_size,
+								const void *src, size_t src_size)
+{
+	if (!dest || !src)
+		return -EINVAL;
+
+	if ((dest + dest_size >= src && dest + dest_size <= src + src_size) ||
+		(src + src_size >= dest && src + src_size <= dest + dest_size))
+		return -EINVAL;
+
+	if (src_size > dest_size)
+		return -EINVAL;
+
+	memcpy(dest, src, src_size);
+
+	return 0;
+}
+
+static inline int arch_memset_s(void *dest, size_t dest_size,
+								int data, size_t count)
+{
+	if (!dest)
+		return -EINVAL;
+
+	if (count > dest_size)
+		return -EINVAL;
+
+	if (!memset(dest, data, count))
+		return -ENOMEM;
+
+	return 0;
+}
 
 #endif

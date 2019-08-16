@@ -15,4 +15,5 @@ add_local_sources(sof
 	dma.c
 	dai.c
 	wait.c
+	memory_pm.c
 )
